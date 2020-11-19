@@ -1,0 +1,1 @@
+Contains the daily log catalogued by month and week
