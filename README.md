@@ -1,2 +1,3 @@
 # MEP_Thomas
-For sharing daily log
+
+Daily documentation for the Master End Project 
