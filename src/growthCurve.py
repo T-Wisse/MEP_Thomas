@@ -9,9 +9,9 @@ Processing lab data:
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-# import os
+import os
 from scipy.optimize import curve_fit
-# os.chdir('D:/Users/Thomas/Studie/MEP/MEP_Thomas/src')
+os.chdir('D:/Users/Thomas/Studie/MEP/MEP_Thomas/src')
 
 #%% 01/02/21 YLL3a in YPD Dilution
 
@@ -37,8 +37,8 @@ dataCSM = pd.read_excel('../data/growthCurveCSM210211.xlsx')
 tYPD = np.array(np.cumsum(dataYPD['Time']), dtype = float)
 odYPD = np.array(dataYPD['YPD OD']) * np.array(dataYPD['dilution'], dtype = float)
 
-tYPDlinear = tYPD[tYPD>50] #linear region in YPD starts around 50 min
-odYPDlinear = odYPD[tYPD>50]
+tYPDlinear = tYPD[tYPD>65] #linear region in YPD starts around 50 min
+odYPDlinear = odYPD[tYPD>65]
 
 tCSM = np.array(np.cumsum(dataCSM['Time']), dtype = float)
 odCSM = np.array(dataCSM['CSM OD'])
@@ -52,6 +52,9 @@ varsCSM, pcov = curve_fit(func, tCSMlinear, odCSMlinear, p0 = [0.005,1], bounds 
 dtYPD = 1/varsYPD[0] # doubling time YPD
 dtCSM = 1/varsCSM[0] # doubling time CSM
 
+
+print("Doubling time for WT Yeast in YPD is " + str(int(round(dtYPD))) + " minutes")
+print("Doubling time for WT Yeast in CSM is " + str(int(round(dtCSM))) + " minutes")
 
 #%% calculate R squared
 residuals = odYPD - func(tYPD, *varsYPD)
