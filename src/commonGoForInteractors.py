@@ -35,7 +35,7 @@ data_go.columns=['Gene','gene-id','go-aspect','go-term','go-id','feature-type' ]
 
 data=pd.read_excel('../data/data-BioGrid-Yeast.xlsx')
 #%% query
-query=['BEM2'] #should be 381 for BEM1 ???
+query=['BEM1', 'BEM2'] #should be 381 for BEM1 ???
 
 
 #%% Calling the function common_interactors
@@ -49,67 +49,86 @@ commonInteractorData=common_interactors_T(query,data)
 #%% get all unqiue interactor genes
 uniqueInteractorGenes = list(set(commonInteractorData['interactorGene']))
 # uniqueInteractorGenes = commonInteractorData.interactorGene.unique()
-#%% for each unqiue interactor gene get its go terms (dict)
+#%% for each unqiue interactor gene get its go terms
 
-goTermsInteractors = []
-for ii in uniqueInteractorGenes:
-    # print(ii)
-    goTermsInteractors.append(list(data_go['go-term'][data_go['Gene'].str.match(ii)]))
+def goTermsFromGenes(genes,data_go):
+    '''
+    Returns all go terms from one or more genes based on supplied data_go
+    '''
+    
+    goTerms = []
+    for ii in genes:
+        goTerms.append(list(data_go['go-term'][data_go['Gene'].str.match(ii)]))
+    
+    return goTerms
 
+goTermsInteractors = goTermsFromGenes(uniqueInteractorGenes,data_go)
+goTermsQuery = goTermsFromGenes(query,data_go)
+    
+#%% 
+#%% getting and saving 1st layer children of GO terms to file (ONLY RUN ONCE AS IT TAKES FOREVER)
+# probably using a dict rather than 2 lists makes more sens
+
+# save all 1st layer children for a gene or save all 1st layer children for a GO terms? latter would take more time later but saves runtime here...
+# may also just do this for all 6000 genes so we are done...
+
+
+def childrenFromGoTerms(genes,goTerms):
+    '''
+    Returns a dataframe of all 1st layer children per genes based on supplied go terms
+    Requires genes and goTerms to be matching & ordered...
+    '''
+    childrenGoTerms = defaultdict(dict)
+    jj = 0    
+        
+    for ii in genes: #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
+        tmp = [] #clear tmp variable.
+        print('Progress: gene ' + str(jj+1) + '/' + str(len(genes)))
+        queryGoTerm = goTerms[jj]
+        for kk in queryGoTerm:
+            tmp = tmp + getChildrenGoTerm(kk) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
+            
+        childrenGoTerms[ii] = tmp  #does this method overwrite the old values? probably... 
+        jj = jj+1
+        
+    df=pd.DataFrame([childrenGoTerms]).T
+    return df
+
+genes = uniqueInteractorGenes[0:2] + uniqueInteractorGenes[-3:-1]
+
+df = childrenFromGoTerms(genes,goTermsInteractors)
+df2 = childrenFromGoTerms(query,goTermsQuery)
+
+#%% saving dfs
+df.to_excel(r'../data/1stLayerGO_INT_BEM1_BEM2.xlsx', index = True)
+df2.to_excel(r'../data/1stLayerGO_BEM1_BEM2.xlsx', index = True)
 
 #%% for each go term of each interactor gene, get its 1st layer children
 # for each interactor, find the overlapping set of 1st layer GO terms with our query gene
 
-print('using cell polarity as parent query GO term')
-childrenGoTermsQuery = getChildrenGoTerm('establishment or maintenance of cell polarity') #should we do this for every query gene? check plan on github
+data_childrenGoTerms=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM2.xlsx')
+# data_childrenGoTerms.rename(columns={"unnamed: 0": "Gene", "0": "GoTerms"})
+data_childrenGoTerms.columns = ['Gene','ChildGoTerms']
+
+#%% Fix this so it finds the overlap for query gene children rather than current childrenGoTermsQuery
+GOQuery = 'establishment or maintenance of cell polarity'
+print('using ' + GOQuery + ' as parent query GO term')
+childrenGoTermsQuery = getChildrenGoTerm(GOQuery) #should we do this for every query gene? check plan on github
 commonChildGoTerms = defaultdict(dict)
 jj = 0
 
-for ii in uniqueInteractorGenes: #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
+uniqueInteractorGenesTest = uniqueInteractorGenes
+
+for ii in uniqueInteractorGenesTest: #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
     print(jj)
-    queryGoTerm = goTermsInteractors[jj] #discuss with Leila what to do here...
-    for kk in queryGoTerm:
-        childrenGoTermsInteractor = getChildrenGoTerm(kk) 
-        tempCommonChildGoTerms = childrenGoTermsQuery + childrenGoTermsInteractor
-        commonChildGoTerms[ii] = set([x for x in tempCommonChildGoTerms if tempCommonChildGoTerms.count(x) > 1]) #finds all common go terms - empty so far, does it work properly?
+    tmp =  list(data_childrenGoTerms['ChildGoTerms'][data_childrenGoTerms['Gene']==ii])
+    childrenGoTermsInteractor = tmp[0].split("', '") # bit of a hack... also the first and last entry contain a bracket
+    childrenGoTermsInteractor[0].replace("[","")
+    childrenGoTermsInteractor[-1].replace("]","")
+    tempCommonChildGoTerms = childrenGoTermsQuery + childrenGoTermsInteractor
+    commonChildGoTerms[ii] = set([x for x in tempCommonChildGoTerms if tempCommonChildGoTerms.count(x) > 1]) #finds all common go terms - empty so far, does it work properly?
     jj = jj+1
 # GOTermsInteractors = getGOTermsGene() 
 
-#%%
-
-
-#%% testing
-# childrenGOtermsInteractors = getChildrenGoTerm('establishment or maintenance of cell polarity')
-
-
-# commonInteractors = defaultdict(dict)
-# geneList = ['BEM1', 'BEM3']
-# query = ['BEM2', 'BEM3']
-
-# for i in range(1):
-#     for genes in geneList:
-#         commonInteractors[genes]['query']=query[i]
-#         commonInteractors[genes]['names of genes']=genes
-
-
-# interactionData = data
-# queryGene = 'BEM1'
-
-# query1 = interactionData[interactionData['gene-query-name']==queryGene] #Reduce list to only query gene
-# interactorList = query1['gene-target-name'].unique() #List genes interacting with query1 gene 
-
-# query1['gene-target-name'] in interactorList
-
-
-# query1[pd.DataFrame(query1.'gene-target-name'.tolist()).isin(interactorList).any(1).values]
-
-# queryGene = 'a'
-# interactorGene = 'b'
-# tempCommonInt = 'c'
-
-
-# commonInteractors[queryGene+'-'+interactorGene] = [queryGene]
-# commonInteractors[queryGene+'-'+interactorGene] = [interactorGene]
-# commonInteractors[queryGene+'-'+interactorGene] = [tempCommonInt]
 
 
