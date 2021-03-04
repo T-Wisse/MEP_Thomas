@@ -13,7 +13,7 @@ import pandas as pd
 
 
 
-def getChildrenGoTerm(GOTerm, outType = 'name'):
+def getChildrenGoTerm(GOTerm): #Best to remove outtype? if statement will slow down the code if called often..
     #!/usr/bin/env python
     '''
     Returns a list of all the children of the supplied GO term (name) from yeastmine.
@@ -21,9 +21,7 @@ def getChildrenGoTerm(GOTerm, outType = 'name'):
     
     paremeters:
     -------
-    GOTerm: str
-    outType: str, specifies output type. Takes on values "name" or "identifier". Default = name
-    
+    GOTerm: str (name)
     '''
 
     service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
@@ -43,17 +41,19 @@ def getChildrenGoTerm(GOTerm, outType = 'name'):
     
     GOChildren = []
     
-
-    if outType == 'name':
-        for row in query.rows():
-            GOChildren.append(row["goAnnotation.ontologyTerm.name"])
-            # print(row["goAnnotation.ontologyTerm.name"], row["goAnnotation.ontologyTerm.identifier"])
-    elif outType == 'identifier':
-        for row in query.rows():
-            GOChildren.append(row["goAnnotation.ontologyTerm.identifier"])
-            # print(row["goAnnotation.ontologyTerm.name"], row["goAnnotation.ontologyTerm.identifier"])
-    else:
-        GOChildren = 'Supply correct outType'
+    for row in query.rows():
+        GOChildren.append(row["goAnnotation.ontologyTerm.name"])
+    
+    # if outType == 'name':
+    #     for row in query.rows():
+    #         GOChildren.append(row["goAnnotation.ontologyTerm.name"])
+    #         # print(row["goAnnotation.ontologyTerm.name"], row["goAnnotation.ontologyTerm.identifier"])
+    # elif outType == 'identifier':
+    #     for row in query.rows():
+    #         GOChildren.append(row["goAnnotation.ontologyTerm.identifier"])
+    #         # print(row["goAnnotation.ontologyTerm.name"], row["goAnnotation.ontologyTerm.identifier"])
+    # else:
+    #     GOChildren = 'Supply correct outType'
     
     GOChildren = list(set(GOChildren)) #get unique values
     

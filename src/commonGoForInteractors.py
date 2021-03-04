@@ -2,6 +2,11 @@
 """
 Created on Fri Dec 11 11:57:47 2020
 
+Working version to find all 1st layer children GO terms for interacting genes
+
+How do we want to save this? check if data types are logical and useful.
+Manually check if the output is correct...
+
 @author: Thomas
 """
 
@@ -65,7 +70,6 @@ def goTermsFromGenes(genes,data_go):
 goTermsInteractors = goTermsFromGenes(uniqueInteractorGenes,data_go)
 goTermsQuery = goTermsFromGenes(query,data_go)
     
-#%% 
 #%% getting and saving 1st layer children of GO terms to file (ONLY RUN ONCE AS IT TAKES FOREVER)
 # probably using a dict rather than 2 lists makes more sens
 
@@ -79,7 +83,7 @@ def childrenFromGoTerms(genes,goTerms):
     Requires genes and goTerms to be matching & ordered...
     '''
     childrenGoTerms = defaultdict(dict)
-    jj = 0    
+    jj = 0
         
     for ii in genes: #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
         tmp = [] #clear tmp variable.
@@ -94,9 +98,7 @@ def childrenFromGoTerms(genes,goTerms):
     df=pd.DataFrame([childrenGoTerms]).T
     return df
 
-genes = uniqueInteractorGenes[0:2] + uniqueInteractorGenes[-3:-1]
-
-df = childrenFromGoTerms(genes,goTermsInteractors)
+df = childrenFromGoTerms(uniqueInteractorGenes,goTermsInteractors)
 df2 = childrenFromGoTerms(query,goTermsQuery)
 
 #%% saving dfs
@@ -106,29 +108,40 @@ df2.to_excel(r'../data/1stLayerGO_BEM1_BEM2.xlsx', index = True)
 #%% for each go term of each interactor gene, get its 1st layer children
 # for each interactor, find the overlapping set of 1st layer GO terms with our query gene
 
-data_childrenGoTerms=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM2.xlsx')
-# data_childrenGoTerms.rename(columns={"unnamed: 0": "Gene", "0": "GoTerms"})
-data_childrenGoTerms.columns = ['Gene','ChildGoTerms']
+data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM2.xlsx')
+data_childrenGoTermsInt.columns = ['Gene','ChildGoTerms']
 
-#%% Fix this so it finds the overlap for query gene children rather than current childrenGoTermsQuery
-GOQuery = 'establishment or maintenance of cell polarity'
-print('using ' + GOQuery + ' as parent query GO term')
-childrenGoTermsQuery = getChildrenGoTerm(GOQuery) #should we do this for every query gene? check plan on github
+data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM2.xlsx')
+data_childrenGoTermsQuery.columns = ['Gene','ChildGoTerms']
+
+
+#%% Find the overlap of all 1st layer children of the GO Terms corresponding to the query gene(s) and its interactors
 commonChildGoTerms = defaultdict(dict)
-jj = 0
 
-uniqueInteractorGenesTest = uniqueInteractorGenes
+for GOQuery in  data_childrenGoTermsQuery['Gene']:
+    childrenGoTermsQueryTmp = list(data_childrenGoTermsQuery['ChildGoTerms'][data_childrenGoTermsQuery['Gene']==GOQuery])
+    childrenGoTermsQuery = childrenGoTermsQueryTmp[0].split("', '") # bit of a hack... also the first and last entry contain a bracket
+    childrenGoTermsQuery[0].replace("['","")
+    childrenGoTermsQuery[-1].replace("']","")
+    
+    
+    jj = 0
 
-for ii in uniqueInteractorGenesTest: #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
-    print(jj)
-    tmp =  list(data_childrenGoTerms['ChildGoTerms'][data_childrenGoTerms['Gene']==ii])
-    childrenGoTermsInteractor = tmp[0].split("', '") # bit of a hack... also the first and last entry contain a bracket
-    childrenGoTermsInteractor[0].replace("[","")
-    childrenGoTermsInteractor[-1].replace("]","")
-    tempCommonChildGoTerms = childrenGoTermsQuery + childrenGoTermsInteractor
-    commonChildGoTerms[ii] = set([x for x in tempCommonChildGoTerms if tempCommonChildGoTerms.count(x) > 1]) #finds all common go terms - empty so far, does it work properly?
-    jj = jj+1
-# GOTermsInteractors = getGOTermsGene() 
+    for ii in data_childrenGoTermsInt['Gene']:
+        print(jj)
+        tmp =  list(data_childrenGoTermsInt['ChildGoTerms'][data_childrenGoTermsInt['Gene']==ii])
+        childrenGoTermsInteractor = tmp[0].split("', '") # bit of a hack... also the first and last entry contain a bracket
+        childrenGoTermsInteractor[0].replace("['","")
+        childrenGoTermsInteractor[-1].replace("']","")
+        tempCommonChildGoTerms = childrenGoTermsQuery + childrenGoTermsInteractor
+        commonChildGoTerms[GOQuery +'-'+ ii] = set([x for x in tempCommonChildGoTerms if tempCommonChildGoTerms.count(x) > 1]) #finds all common go terms - empty so far, does it work properly?
+        jj = jj+1
+        
+#%%
+dfOut=pd.DataFrame([commonChildGoTerms]).T
+dfOut.to_excel(r'../data/common1stLayerGO_test.xlsx', index = True)
 
-
+#%%
+testing=pd.read_excel('../data/common1stLayerGO_test.xlsx')
+testing.columns = ['Genes','ChildGoTerms']
 
