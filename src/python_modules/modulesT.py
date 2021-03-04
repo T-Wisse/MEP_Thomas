@@ -185,3 +185,20 @@ def common_go_children(data_go,data_common_partners):
     df_sorted=df.sort_values(by='fraction-of-common-go',ascending=False)
 
     return df_sorted
+
+def getPathwayForGeneFunc(gene): #probably not working at this time...
+    
+    
+    tmp = []
+    for ii in gene:
+
+        
+        service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
+        query = service.new_query("Gene")
+        query.add_view("symbol", "pathways.identifier", "pathways.name")
+        query.add_sort_order("Gene.primaryIdentifier", "ASC")
+        query.add_constraint("organism.shortName", "=", "S. cerevisiae", code="B")
+        query.add_constraint("Gene", "LOOKUP", ii, code="A")
+        
+        for row in query.rows():
+            print(row["symbol"], row["pathways.identifier"], row["pathways.name"])
