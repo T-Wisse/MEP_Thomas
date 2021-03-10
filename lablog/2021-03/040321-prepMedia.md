@@ -2,7 +2,7 @@
 title: "Preparing YPD media"
 output: pdf_document
 documentclass: article
-classoption: twocolumn
+classoption: onecolumn
 pdf_document:
 latex_engine: pdflatex
 toc: true
