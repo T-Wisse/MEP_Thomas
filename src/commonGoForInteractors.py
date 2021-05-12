@@ -40,14 +40,26 @@ data_go.columns=['Gene','gene-id','go-aspect','go-term','go-id','feature-type' ]
 
 data=pd.read_excel('../data/data-BioGrid-Yeast.xlsx')
 #%% query
-query=['BEM1', 'BEM2'] #should be 381 for BEM1 ???
+# query=['BEM1', 'BEM2'] #should be 381 for BEM1 ??
+query = pd.read_excel('../data/genesCellPolarity_SGD_amigo.xlsx') #gene set to look at. Example: cell polarity genes
+query.columns=['gene']
+query = list(set(query.gene)) #get unique entries
+
+#%% (TESTING) QUERY
+query = ['BEM1', 'BEM3']
+
+#%% (TESTING) Reduce dataset to only query genes
+
+data_go_temp = data_go[data_go['Gene'].isin(query)] #take only GO data of genes which are in the query
+data_temp = data[data['gene-query-name'].isin(query)] #take only interaction data of genes which are in the query
+
 
 
 #%% Calling the function common_interactors
-# start = timer()
+start = timer()
 commonInteractorData=common_interactors_T(query,data)
-# end = timer()
-# print(end-start)
+end = timer()
+print(end-start)
 
 #common_go=common_go(data_go=data_go,data_common_partners=common_partners_data)
 
@@ -101,17 +113,18 @@ def childrenFromGoTerms(genes,goTerms):
 df = childrenFromGoTerms(uniqueInteractorGenes,goTermsInteractors)
 df2 = childrenFromGoTerms(query,goTermsQuery)
 
-#%% saving dfs
-df.to_excel(r'../data/1stLayerGO_INT_BEM1_BEM2.xlsx', index = True)
-df2.to_excel(r'../data/1stLayerGO_BEM1_BEM2.xlsx', index = True)
+## %% saving dfs
+
+df.to_excel(r'../data/1stLayerGO_INT_BEM1_BEM3.xlsx', index = True)
+df2.to_excel(r'../data/1stLayerGO_BEM1_BEM3.xlsx', index = True)
 
 #%% for each go term of each interactor gene, get its 1st layer children
 # for each interactor, find the overlapping set of 1st layer GO terms with our query gene
 
-data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM2.xlsx')
+data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM3.xlsx')
 data_childrenGoTermsInt.columns = ['Gene','ChildGoTerms']
 
-data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM2.xlsx')
+data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM3.xlsx')
 data_childrenGoTermsQuery.columns = ['Gene','ChildGoTerms']
 
 
@@ -139,7 +152,7 @@ for GOQuery in  data_childrenGoTermsQuery['Gene']:
         
 #%%
 dfOut=pd.DataFrame([commonChildGoTerms]).T
-dfOut.to_excel(r'../data/common1stLayerGO_test.xlsx', index = True)
+dfOut.to_excel(r'../data/common1stLayerGO_BEM1_BEM3.xlsx', index = True)
 
 #%%
 testing=pd.read_excel('../data/common1stLayerGO_test.xlsx')

@@ -11,8 +11,6 @@ import pandas as pd
 
 # from collections import defaultdict 
 
-
-
 def getChildrenGoTerm(GOTerm): #Best to remove outtype? if statement will slow down the code if called often..
     #!/usr/bin/env python
     '''
@@ -58,6 +56,39 @@ def getChildrenGoTerm(GOTerm): #Best to remove outtype? if statement will slow d
     GOChildren = list(set(GOChildren)) #get unique values
     
     return GOChildren
+
+def getGoTermsFromGene(gene): #Best to remove outtype? if statement will slow down the code if called often..
+    #!/usr/bin/env python
+    '''
+    Returns a list of all the children of the supplied GO term (name) from yeastmine.
+    If list is empty, check if a valid GO Term name is supplied
+    
+    paremeters:
+    -------
+    gene: ...
+    '''
+
+
+    #!/usr/bin/env python
+    from intermine.webservice import Service
+    service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
+    query = service.new_query("Gene")
+    query.add_view("symbol", "goAnnotation.ontologyTerm.name")
+    query.add_sort_order("Gene.primaryIdentifier", "ASC")
+    query.add_constraint("organism.shortName", "=", "S. cerevisiae", code="F")
+    query.add_constraint("status", "IS NULL", code="C")
+    query.add_constraint("status", "=", "Active", code="B")
+    query.add_constraint("Gene", "LOOKUP", gene, code="A")
+    query.set_logic("(B or C) and F and A")
+    
+    GOterms = []
+    
+    for row in query.rows():
+        GOterms.append(row["goAnnotation.ontologyTerm.name"])
+    
+    GOterms = list(set(GOterms)) #get unique values
+    
+    return GOterms
     
 
 def getPathwayForGeneFunc(gene):
