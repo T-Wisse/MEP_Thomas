@@ -2,6 +2,18 @@
 """
 Created on Fri Dec 11 11:58:56 2020
 @author: Thomas
+
+Contains functions
+
+goTermsFromGenes    Currently a bit convoluted. May have broken other scripts by removing getGoTermsFromGene! --> update to new function
+getChildrenGoTerm   Currently a bit convoluted. May have broken other scripts by removing getGoTermsFromGene! --> update to new function
+
+getPathwayForGeneFunc 
+common_interactors_T 
+common_go_children 
+
+
+
 """
 from __future__ import print_function
 from intermine.webservice import Service
@@ -11,85 +23,115 @@ import pandas as pd
 
 # from collections import defaultdict 
 
-def getChildrenGoTerm(GOTerm): #Best to remove outtype? if statement will slow down the code if called often..
-    #!/usr/bin/env python
+def goTermsFromGenes(genes): #get go terms for genes from yeastmine
     '''
-    Returns a list of all the children of the supplied GO term (name) from yeastmine.
-    If list is empty, check if a valid GO Term name is supplied
+    Returns a dict of all go terms for supplied genes
     
-    paremeters:
-    -------
-    GOTerm: str (name)
     '''
+    
+    def getGoTermsFromGene(gene): #
+        '''
+        Returns a list of all the GO terms of the supplied gene (name) from yeastmine.
+        
+        paremeters:
+        -------
+        gene: string
+        '''
+      
+        from intermine.webservice import Service
+        service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
+        query = service.new_query("Gene")
+        query.add_view("symbol", "goAnnotation.ontologyTerm.name")
+        query.add_sort_order("Gene.primaryIdentifier", "ASC")
+        query.add_constraint("organism.shortName", "=", "S. cerevisiae", code="F")
+        query.add_constraint("status", "IS NULL", code="C")
+        query.add_constraint("status", "=", "Active", code="B")
+        query.add_constraint("Gene", "LOOKUP", gene, code="A")
+        query.set_logic("(B or C) and F and A")
+        
+        GOterms = []
+        
+        for row in query.rows():
+            GOterms.append(row["goAnnotation.ontologyTerm.name"])
+        
+        GOterms = list(set(GOterms)) #get unique values
+    
+        return GOterms
 
-    service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
-    query = service.new_query("Gene")
-    query.add_constraint("goAnnotation.ontologyTerm.parents", "GOTerm")
-    query.add_constraint("goAnnotation.ontologyTerm", "GOTerm")
-    query.add_view("goAnnotation.ontologyTerm.name", "goAnnotation.ontologyTerm.identifier")
-    query.add_constraint("organism.name", "=", "Saccharomyces cerevisiae", code="B")
-    query.add_constraint("status", "IS NULL", code="F")
-    query.add_constraint("status", "=", "Active", code="E")
-    query.add_constraint("goAnnotation.qualifier", "IS NULL", code="J")
-    query.add_constraint("goAnnotation.qualifier", "!=", "NOT", code="I")
-    query.add_constraint("goAnnotation.evidence.code.annotType", "=", "manually curated", code="D")
-    query.add_constraint("goAnnotation.evidence.code.annotType", "=", "high-throughput", code="C")
-    query.add_constraint("goAnnotation.ontologyTerm.parents.name", "=", GOTerm, code="A")
-    query.set_logic("A and B and (C or D) and (E or F) and (I or J)")
-    
-    GOChildren = []
-    
-    for row in query.rows():
-        GOChildren.append(row["goAnnotation.ontologyTerm.name"])
-    
-    # if outType == 'name':
-    #     for row in query.rows():
-    #         GOChildren.append(row["goAnnotation.ontologyTerm.name"])
-    #         # print(row["goAnnotation.ontologyTerm.name"], row["goAnnotation.ontologyTerm.identifier"])
-    # elif outType == 'identifier':
-    #     for row in query.rows():
-    #         GOChildren.append(row["goAnnotation.ontologyTerm.identifier"])
-    #         # print(row["goAnnotation.ontologyTerm.name"], row["goAnnotation.ontologyTerm.identifier"])
-    # else:
-    #     GOChildren = 'Supply correct outType'
-    
-    GOChildren = list(set(GOChildren)) #get unique values
-    
-    return GOChildren
+    goTerms = defaultdict(dict)
+    jj = 0
+        
+    for ii in genes: #For each gene in the supplied set of genes. #this loop takes essentially forever --> Maybe download all children for GO terms so we don't have to use yeastmine everytime?
+        # tmp = [] #clear tmp variable.
+        print('Progress: gene ' + str(jj+1) + '/' + str(len(genes)))
+        jj = jj+1
+        
+        goTerms[ii] = getGoTermsFromGene(ii) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
+        
+    # df=pd.DataFrame([goTerms]).T #transform dict to dataframe.
+    return goTerms
 
-def getGoTermsFromGene(gene): #Best to remove outtype? if statement will slow down the code if called often..
-    #!/usr/bin/env python
+def childrenFromGoTerms(genes,goTerms): 
     '''
-    Returns a list of all the children of the supplied GO term (name) from yeastmine.
-    If list is empty, check if a valid GO Term name is supplied
-    
-    paremeters:
-    -------
-    gene: ...
+    Returns a dataframe of all 1st layer children per genes based on supplied go terms
+   
     '''
+    
+    def getChildrenGoTerm(GOTerm):
+       
+        '''
+        Returns a list of all the children of the supplied GO term (name) from yeastmine.
+        If list is empty, check if a valid GO Term name is supplied
+        
+        paremeters:
+        -------
+        GOTerm: str (name)
+        '''
+    
+        service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
+        query = service.new_query("Gene")
+        query.add_constraint("goAnnotation.ontologyTerm.parents", "GOTerm")
+        query.add_constraint("goAnnotation.ontologyTerm", "GOTerm")
+        query.add_view("goAnnotation.ontologyTerm.name", "goAnnotation.ontologyTerm.identifier")
+        query.add_constraint("organism.name", "=", "Saccharomyces cerevisiae", code="B")
+        query.add_constraint("status", "IS NULL", code="F")
+        query.add_constraint("status", "=", "Active", code="E")
+        query.add_constraint("goAnnotation.qualifier", "IS NULL", code="J")
+        query.add_constraint("goAnnotation.qualifier", "!=", "NOT", code="I")
+        query.add_constraint("goAnnotation.evidence.code.annotType", "=", "manually curated", code="D")
+        query.add_constraint("goAnnotation.evidence.code.annotType", "=", "high-throughput", code="C")
+        query.add_constraint("goAnnotation.ontologyTerm.parents.name", "=", GOTerm, code="A")
+        query.set_logic("A and B and (C or D) and (E or F) and (I or J)")
+        
+        GOChildren = []
+        
+        for row in query.rows():
+            GOChildren.append(row["goAnnotation.ontologyTerm.name"])
+            
+        GOChildren = list(set(GOChildren)) #get unique values
+        
+        return GOChildren
+    
+    childrenGoTerms = defaultdict(dict)
+    jj = 0
+     
+    for ii in genes: #For each gene in the supplied set of genes. 
+        tmp = [] #clear tmp variable.
+        print('Progress: gene ' + str(jj+1) + '/' + str(len(genes)))
+        jj = jj+1
+        
+        queryGoTerm = goTerms[ii] #Select corresponding set of go terms for the gene
+        for kk in queryGoTerm: #For each go term of the gene, find all 1st layer children 
+            tmp = tmp + getChildrenGoTerm(kk) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
+        
+        if queryGoTerm in tmp: #check if list contains original (parent) go term and remove it
+            tmp.remove(queryGoTerm)
+        childrenGoTerms[ii] = tmp
+                  
+    return childrenGoTerms
 
 
-    #!/usr/bin/env python
-    from intermine.webservice import Service
-    service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
-    query = service.new_query("Gene")
-    query.add_view("symbol", "goAnnotation.ontologyTerm.name")
-    query.add_sort_order("Gene.primaryIdentifier", "ASC")
-    query.add_constraint("organism.shortName", "=", "S. cerevisiae", code="F")
-    query.add_constraint("status", "IS NULL", code="C")
-    query.add_constraint("status", "=", "Active", code="B")
-    query.add_constraint("Gene", "LOOKUP", gene, code="A")
-    query.set_logic("(B or C) and F and A")
-    
-    GOterms = []
-    
-    for row in query.rows():
-        GOterms.append(row["goAnnotation.ontologyTerm.name"])
-    
-    GOterms = list(set(GOterms)) #get unique values
-    
-    return GOterms
-    
+
 
 def getPathwayForGeneFunc(gene):
         
@@ -216,20 +258,3 @@ def common_go_children(data_go,data_common_partners):
     df_sorted=df.sort_values(by='fraction-of-common-go',ascending=False)
 
     return df_sorted
-
-def getPathwayForGeneFunc(gene): #probably not working at this time...
-    
-    
-    tmp = []
-    for ii in gene:
-
-        
-        service = Service("https://yeastmine.yeastgenome.org/yeastmine/service")
-        query = service.new_query("Gene")
-        query.add_view("symbol", "pathways.identifier", "pathways.name")
-        query.add_sort_order("Gene.primaryIdentifier", "ASC")
-        query.add_constraint("organism.shortName", "=", "S. cerevisiae", code="B")
-        query.add_constraint("Gene", "LOOKUP", ii, code="A")
-        
-        for row in query.rows():
-            print(row["symbol"], row["pathways.identifier"], row["pathways.name"])

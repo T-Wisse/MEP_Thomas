@@ -18,6 +18,8 @@ import numpy as np
 from collections import defaultdict 
 import pandas as pd
 import os
+import seaborn as sns
+from datetime import date
 
 fileDir = os.path.dirname(os.path.abspath(__file__)) # get path to this file
 os.chdir(fileDir) # Change working directory to current file
@@ -28,12 +30,14 @@ sys.path.insert(0, modulePath) #hack to add module to path. otherwise it won't b
 
 from modulesT import common_interactors_T
 from modulesT import common_go_children
-from modulesT import getChildrenGoTerm
-from modulesT import getGoTermsFromGene
+from modulesT import childrenFromGoTerms
+from modulesT import goTermsFromGenes
 
 # from python_modules.module_common_measures import common_partners
 #%% User settings
-save = False #Set if data should be saved to excel
+save = True #Set if data should be saved to excel
+if save == True:
+    dateToday = str(date.today())
 
 #%% getting the data
 
@@ -65,70 +69,38 @@ start = timer()
 commonInteractorData=common_interactors_T(query,data) #find all common interactors of each of the query genes (with all yeast genes). Based on supplied interaction data
 end = timer()
 print('Duration of determining interactors of query genes function = ' + str(round(end-start)) + 's') #print duration of function common_interactors_T
+uniqueInteractorGenes = list(set(commonInteractorData['interactorGene'])) #Get unique interactors (remove duplicates to reduce the list of interactor genes to unique genes)
 
-#common_go=common_go(data_go=data_go,data_common_partners=common_partners_data)
 
-#%% get all unqiue interactor genes
-uniqueInteractorGenes = list(set(commonInteractorData['interactorGene'])) # remove duplicates to reduce the list of interactor genes to unique genes
-# uniqueInteractorGenes = commonInteractorData.interactorGene.unique() #other method?
 
-#%% (testing) get go term data for genes 
+#%% get go term data for genes (Set up for testing: only takes the first 10 genes)
 
-def goTermsFromGenes(genes): #get go terms for genes from yeastmine
-    '''
-    Returns a dict of all go terms for supplied genes
-    
-    '''
-    goTerms = defaultdict(dict)
-    jj = 0
-        
-    for ii in genes: #For each gene in the supplied set of genes. #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
-        # tmp = [] #clear tmp variable.
-        print('Progress: gene ' + str(jj+1) + '/' + str(len(genes)))
-        jj = jj+1
-        
-        goTerms[ii] = getGoTermsFromGene(ii) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
-        
-    # df=pd.DataFrame([goTerms]).T #transform dict to dataframe.
-    return goTerms
-
-goTermsInteractors = goTermsFromGenes(uniqueInteractorGenes[0:10])
+goTermsInteractors = goTermsFromGenes(uniqueInteractorGenes)
 goTermsQuery = goTermsFromGenes(query)
 # goTermsInteractors.columns=['go-term']
 # goTermsQuery.columns=['go-term']
 
 
-#%% getting 1st layer children of GO terms to file 
+#%% getting 1st layer children of GO terms to file (Set up for testing: only takes the first 10 genes)
 
 # save all 1st layer children for a gene or save all 1st layer children for a GO terms? latter would take more time later but saves runtime here...
 # may also just do this for all 6000 genes so we are done...
+# this fucntion takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
 
-
-def childrenFromGoTerms(genes,goTerms): 
-    '''
-    Returns a dataframe of all 1st layer children per genes based on supplied go terms
-   
-    '''
-    childrenGoTerms = defaultdict(dict)
-    jj = 0
-     
-    for ii in genes: #For each gene in the supplied set of genes. #this loop takes essentially forever --> find a better way. maybe download all children for GO terms so we don't have to use yeastmine everytime?
-        tmp = [] #clear tmp variable.
-        print('Progress: gene ' + str(jj+1) + '/' + str(len(genes)))
-        jj = jj+1
-        
-        queryGoTerm = goTerms[ii] #Select corresponding set of go terms for the gene
-        for kk in queryGoTerm: #For each go term of the gene, find all 1st layer children 
-            tmp = tmp + getChildrenGoTerm(kk) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
-        
-        if queryGoTerm in tmp: #check if list contains original (parent) go term and remove it
-            tmp.remove(queryGoTerm)
-        childrenGoTerms[ii] = tmp
-                  
-    return childrenGoTerms
-
-fLCInteractors = childrenFromGoTerms(uniqueInteractorGenes[0:10],goTermsInteractors) #fLC = first layer children
+fLCInteractors = childrenFromGoTerms(uniqueInteractorGenes,goTermsInteractors) #fLC = first layer children
 fLCQuery = childrenFromGoTerms(query,goTermsQuery)
+
+#%% return unique interactor list to per interacting genes
+
+
+z = commonInteractorData['commonInteractors'].to_dict()
+commonInteractorSetData = defaultdict(dict)
+
+
+
+for ii in z:
+    interactorGene = ii.split("-",1)[1]
+    commonInteractorSetData[ii] = fLCInteractors[interactorGene]
 
 
 #%% saving 1st layer children data to excel (using dataframes, if this turns out to be an issue switch to csv package maybe)
@@ -137,8 +109,8 @@ if save == True:
     df=pd.DataFrame([fLCInteractors]).T
     df2 = pd.DataFrame([fLCQuery]).T
     
-    df.to_excel(r'../data/1stLayerGO_INT_BEM1_BEM3_testing.xlsx', index = True)
-    df2.to_excel(r'../data/1stLayerGO_BEM1_BEM3_testing.xlsx', index = True)
+    df.to_excel(r'../data/' + dateToday + '_1stLayerGO_INT_BEM1_BEM3_testing.xlsx', index = True)
+    df2.to_excel(r'../data/' + dateToday + '_1stLayerGO_BEM1_BEM3_testing.xlsx', index = True)
 
 #np.savetxt(r'c:\data\np.txt', df.values, fmt='%d') ALTERNATIVE: SAVE TO TXT. MAY BE WORTH LOOKING INTO
 
@@ -153,6 +125,8 @@ if save == True:
 
 
 #%% Find the overlap of all 1st layer children of the GO Terms corresponding to the query gene(s) and its interactors
+
+
 
 commonChildGoTerms = defaultdict(dict)
 commonChildGoTermsFraction = defaultdict(dict)
@@ -174,21 +148,49 @@ for goQuery in fLCQuery: #THIS LOOP LOOKS AT ALL QUERY GENES WITH ALL GENES, NOT
 
 
         
-#%%
+#%% saving 1st layer child data to excel
 if save == True:
     dfOut=pd.DataFrame([commonChildGoTerms]).T
-    dfOut.to_excel(r'../data/common1stLayerGO_BEM1_BEM3_testing.xlsx', index = True)
+    dfOut.to_excel(r'../data/' + dateToday+ '_common1stLayerGO_BEM1_BEM3_testing.xlsx', index = True)
 
-#%% reading data saved
-# testing=pd.read_excel('../data/common1stLayerGO_test.xlsx')
+#%% reading data saved above
+# testing=pd.read_excel('../data/common1stLayerGO_BEM1_BEM3_testing.xlsx')
 # testing.columns = ['Genes','ChildGoTerms']
 
-if save == True:
-    print('test')
-    
-#%%
-testing = defaultdict(dict)
+#%% plotting
+gene = 'BEM1'
 
-for goQuery in fLCQuery:    
-    for ii in fLCInteractors:
-        
+#get list of keys
+keys = list(commonChildGoTerms.keys())
+queryKeys = [i for i in keys if gene in i] #Get a list all keys containing the string <gene> 
+tempVariable = list(range(0,len(queryKeys)))
+fractionCommon = list(map(commonChildGoTermsFraction.get, queryKeys)) #get all fractions for query keys
+
+dataCommonGo = pd.DataFrame([fractionCommon]).T
+dataCommonGo['commonInteractorCount'] = tempVariable #IMPORTANT NOTE: THIS DOES NOT MAKE SURE THE APPROPRIATE VALUES ARE MATCHED...
+dataCommonGo['score'] = tempVariable
+dataCommonGo.columns=['fractionCommon','commonInteractorCount','score']
+
+#NEED INTERACTION TYPE TO PLOT
+#NEED SOMETHING TO PLOT AGAINST... For now temporary variable
+
+#%%
+# sns.set(style="ticks", color_codes=True)
+# # plot=sns.pairplot(tmp,vars=['fraction-of-common-go','common_interactors'],hue='score',hue_order=['NG','SL','PG'],
+#                   # diag_kind="hist", diag_kws = {'bins':int(np.ceil(np.sqrt(tmp.shape[0])))},corner=True)
+# plot=sns.pairplot(dataCommonGo,vars=['fractionCommon','commonInteractorCount'],hue='score',
+#                   corner=True, diag_kws = {'bw' : 10, 'kernel' : 'tri'})
+# plot.fig.suptitle(gene)
+
+
+#%% Plotting results: Working Combined plot
+
+# # gene = 'BEM1'
+# # bins = int(np.ceil(np.sqrt(tmp.shape[0])))
+# sns.set(style="ticks", color_codes=True)
+# # plot=sns.pairplot(common_go_data,vars=['fraction-of-common-go','common_interactors'],hue='score',hue_order=['NG','PG','SL'],
+#                   # diag_kind="hist",diag_kws = {'bins':int(np.ceil(np.sqrt(common_go_data.shape[0])))},corner=True)
+# plot=sns.pairplot(common_go_data,vars=['fraction-of-common-go','common_interactors'],hue='score',hue_order=['NG','SL','PG'])
+# # plt.title(query[0])
+# plot.fig.suptitle('Protein Folding Genes',y=1.08)
+# # plot.savefig('../output_images/Testing/common-go-terms-of-'+ gene +'-based-on-their-type.png',dpi=300,format='png',transparent=True)
