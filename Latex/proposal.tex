@@ -1,0 +1,97 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{DRAFT MEP Proposal}
+\author{Thomas}
+\date{2021}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+
+\begin{document}
+
+\maketitle
+
+\section{Literature review}
+%Discuss current knowledge. 
+
+A mutation of a gene may have an effect on the fitness of a cell, which can be measured experimentally by growing a strain with that gene deleted. Since cellular processes exist of pathways which are linked to some degree, two mutations in the same cell may not simply have the combined effect of the single mutations. If that is the case, the mutated genes are said to have a genetic interaction. Genetic interactions may be positive or negative. Positive interactions can be quantified as suppression, epistasis or symmetric interactions \cite{Constanzo2013}. Negative interactions can be divided into synthetic sick and synthetic lethal. How the genes in question relate in common genetic pathways may affect the type of genetic interaction observed. If two genes perform a redundant function, a deletion of either one gene may not affect the phenotype a little. However, the deletion of both genes will result in a large decrease in phenotype. Therefore this is an example of a negative interaction. Similarly, if one of two subsequent genes in a pathway is deleted, the entire pathway is removed. The deletion of both genes, then, will not decrease the fitness much further, making this a positive interaction. If two proteins balance each other, for example in detoxification or regulation, the deletion of one gene may flip the fitness effect of a deletion of the other gene.
+
+In previous studies of genetic interaction in S. \textit{cerevisiae}, double mutants have been created using synthetic genetic array (SGA) \cite{Tong2001}. These double mutants contain a mutation of a query gene and one of ~4700 other non-essential genes. Colony size of the double mutant could be used to estimate fitness and classify the interaction between the two mutated genes. Later similar experiments have generated an interaction map with around 550000 negative and 350000 positive interactions and which contains ~90\% of all yeast genes \cite{Constanzo2016}. As observed previously \cite{Constanzo2010}, the type of interaction between genes may depend on a number of factors. "Negative interactions connected functionally related genes, mapped core bioprocesses, and identified pleiotropic genes" and "positive interactions often mapped general regulatory connections associated with defects in cell cycle progression or cellular proteostasis". This begs the question if these interactions may be predicted. 
+
+While a lot of data has been gathered on genetic interactions, this is mostly for double mutants. However, introducing three or more mutations may give rise to further genetic interactions as observed in \cite{Laan2015}. BEM$1\Delta$ lines are rescued by subsequent mutations in BEM3, NRP1 and BEM2 in that order.
+
+SAturated Transposon Analysis in Yeast (SATAY) allows generation of interaction data of a single gene with all other genes. This method works by introducing a plasmid containing a single transposon into a mutated yeast strain. Inducing the transposon gives rise to a single insertion of the transposon in the yeast genome. By using a large population, all genes can be hit by an insertion simultaneously. After a short period of growth the genomic contents of the cells are extracted and digested. Subsequently PCR is performed using primers specific for the transposon
+
+%Study this further to get an idea of issues and how to work with it. Has been applied in other organisms than yeast first, may be quite relevant still. How many reads are generated per transposon? Meeting: 0 or 1 basically, but we do PCR so is that accurate?
+
+
+\section{Knowledge gaps}
+%Discuss what we currently do not know but may want to know
+While SGA methods have been applied very thoroughly, there are experimental constraints of working with essential genes. As a result the complete interaction map could not be generated. 
+
+The number of experiments required to study triple mutants is much larger than for double mutants. Furthermore, SGA experiments are very time consuming. As a result the interaction map is limited to double mutations. However, experiments such as from \cite{Laan2015} show that rescue may involve multiple mutations which are not immediately obvious from the interaction map. 
+
+SATAY experiments yield sequencing data. Specifically reads and transposon counts. The transposon count can be used for determining which genes are essential. It is possible to estimate the fitness of specific double mutants. For this, the reads can be used. However, the best method to obtain fitness from SATAY data is unclear.
+
+
+
+\section{Research questions}
+%Specifically state what we want to know
+
+\begin{itemize}
+    \item How do genetic interactions change after the mutation of a single gene.
+         \begin{itemize}
+             \item Which genetic interactions change
+             \item Into which type of genetic interaction do they change
+             \item How good are these predictions
+        \end{itemize}
+   \item How to obtain fitness from SATAY data? How accurate and precise is this? %Greg and Wessel are working on this. It seems quite interesting and is progressing but I get the impression it will not be very accurate or precise. => compare SATAY results with existing genetic interaction data. (Should we do this or will Greg and Wessel?) The part on protein domain resolution is quite interesting and may actually form a problem..
+   
+   As shown in Constanzo et al. 2016 (?) 
+
+\end{itemize}
+
+
+
+
+
+% How well can we predict the type of genetic interaction interaction between two genes in a specific genetic background
+%     \begin{itemize}
+%         \item How valid is the existing genetic interaction map in the background of a mutation?
+    
+    
+%         \item How many background mutations are relevant? How many can we realistically study? (Probably just 1? -> extrapolate)
+%         \item Which properties can be used (see literature review) %study these some more, where can I find that data?
+%         \item Which experiments do we need to do to get a significant answer %very related to discussion with Johan Dubbeldam
+        
+%     \end{itemize}
+
+\section{Approach}
+%Discuss per research question how to get an answer to this question. %The way to get the target: point of view.
+
+The scope of the research question is quite large, as a huge number of genes and genetic interactions exist. We use the model organism of S. \textit{cerevisiae}, limiting us to 6000 genes. In order to make the problem more tractable, we limit ourselves to subsets of these genes, which I will call modules. A module consists of all genes which share the same parent GO term according to the SGD database (yeastmine). Here, we use the parent GO terms of cell polarity and protein folding to create two modules. If we are successful we may be able to extend our results to be more generally valid, such as for multiple mutations and the entire genome. 
+
+Any genetic interaction has one or more underlying mechanisms which cause it. These mechanisms not only lie at the basis of understanding how a genetic interaction emerges, but also how a perturbation may affect the interaction. As we have seen (FIGURE?), the relative position of two genes in a common pathway often (HOW OFTEN?) determines the type of interaction (WHAT ELSE MAY DETERMINE THIS?). 
+
+When determining the validity of the existing genetic interaction map in the presence of a mutation we will want to have some form of quantification. We can quantify the number of interactions that change. As fitness data will not be extremely precise or accurate, this should concern the interaction type. 
+
+Classification algorithms allows us to classify new data as belonging to a particular class based on training data. We can distinguish between different classes in our data. An interaction between genes may be positive, neutral, negative or synthetic lethal. Herein also lies the issue with using a classifier for our question. Single genes may have different interactions with different genes and it may be different for each background. Therefore a single gene can not be classified, but only an interaction between two genes in a specific background. 
+
+As a result, a classifier can not easily be used to predict the effect of a mutation. If instead we introduce classes which describe the change in interaction type this may still be possible. However, In order to get a high confidence result we need a large dataset (HOW LARGE?). This means we need the genetic interaction data for many mutant strains to make predictions, which is not practical as this is what we are trying to avoid.
+
+However, this does not mean an application of the naive bayes classifier does not have uses. The algorithm combines different attributes, assuming they are independent. By separating existing genetic interaction data into a training set and a test set, we can evaluate how well we can predict an interaction based on used attributes. This gives us an estimation of which attributes are useful when predicting genetic interactions (feature selection (see novakovic 2010)) and how well we can predict a genetic interaction using these. My assumption here is that predicting a change in genetic interaction is harder than predicting the type of genetic interaction in the WT (IS THIS A LOGICAL ASSUMPTION?). Estimating how good the attributes work also depends on the correctness of the existing genetic interaction data (as well as the data of the attributes)
+Another classifier we could use instead is the K-nearest neighbours. 
+
+The attributes to use have to be discrete and are assumed to be independent. 
+
+
+\section{Goals}
+% WHAT TO write here?
+%Very specific things I will have to do in order to address my question
+
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
