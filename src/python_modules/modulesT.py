@@ -65,9 +65,10 @@ def goTermsFromGenes(genes): #get go terms for genes from yeastmine
         # tmp = [] #clear tmp variable.
         print('Progress: gene ' + str(jj+1) + '/' + str(len(genes)))
         jj = jj+1
-        
-        goTerms[ii] = getGoTermsFromGene(ii) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
-        
+        try: 
+            goTerms[ii] = getGoTermsFromGene(ii) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
+        except Exception: #Specific error I want to catch is WebserviceError which is part of the intermine.webservice package but I don't know how
+            goTerms[ii] = 'Error'
     # df=pd.DataFrame([goTerms]).T #transform dict to dataframe.
     return goTerms
 
@@ -122,8 +123,14 @@ def childrenFromGoTerms(genes,goTerms):
         
         queryGoTerm = goTerms[ii] #Select corresponding set of go terms for the gene
         for kk in queryGoTerm: #For each go term of the gene, find all 1st layer children 
-            tmp = tmp + getChildrenGoTerm(kk) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
-        
+            for attempt in range(2): #Allow for multiple attempts
+                try: 
+                    tmp = tmp + getChildrenGoTerm(kk) #This method results in the double checking of a lot of GO terms... Maybe better to get a list of 
+                except Exception: #catch webservice errors
+                    tmp = tmp + ['Error_attempt_'+str(attempt+1)] #first draft of error messages. Probably not very useful like this but eh
+                else: #if no exception is throw, break the for loop
+                    break
+                
         if queryGoTerm in tmp: #check if list contains original (parent) go term and remove it
             tmp.remove(queryGoTerm)
         childrenGoTerms[ii] = tmp

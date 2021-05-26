@@ -35,7 +35,7 @@ from modulesT import goTermsFromGenes
 
 # from python_modules.module_common_measures import common_partners
 #%% User settings
-save = True #Set if data should be saved to excel
+save = False #Set if data should be saved to excel
 if save == True:
     dateToday = str(date.today())
 
@@ -95,8 +95,6 @@ fLCQuery = childrenFromGoTerms(query,goTermsQuery)
 
 z = commonInteractorData['commonInteractors'].to_dict()
 commonInteractorSetData = defaultdict(dict)
-
-
 
 for ii in z:
     interactorGene = ii.split("-",1)[1]
