@@ -206,7 +206,7 @@ def common_interactors_T(query,interactionData): #interaction data must have a '
             commonInteractors[queryGene+'-'+interactorGene]['interactionType'] = tmpInteractionType[0]
             commonInteractors[queryGene+'-'+interactorGene]['queryGene'] = queryGene
             commonInteractors[queryGene+'-'+interactorGene]['interactorGene'] = interactorGene
-            commonInteractors[queryGene+'-'+interactorGene]['commonInteractors'] = [tempCommonInt]
+            commonInteractors[queryGene+'-'+interactorGene]['commonInteractors'] = tempCommonInt
             # tmpInteraction = query1[]
             
             # commonInteractors[queryGene+'-'+interactorGene]['interactionType'] = query1['gene-target-name'] ==
