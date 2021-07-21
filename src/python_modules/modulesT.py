@@ -198,7 +198,8 @@ def common_interactors_T(query,interactionData): #interaction data must have a '
 
             query2 = interactionData[interactionData['gene-query-name']==interactorGene]
             interactors = query2['gene-target-name'].unique() #List genes interacting with query2 gene
-            tempCommonInt = list(common_member(interactorList, interactors))
+            #tempCommonInt = list(common_member(interactorList, interactors))
+            tempCommonInt = common_member(interactorList, interactors)
                         
             tmpInteractionType = query1[query1['gene-target-name']==interactorGene]['interaction-type'].unique().tolist()
                       

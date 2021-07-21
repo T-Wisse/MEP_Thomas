@@ -14,8 +14,10 @@ from collections import defaultdict
 import pandas as pd
 import os
 import seaborn as sns
+import scipy as sc
+import matplotlib.pyplot as plt
 from datetime import date
-# import matplotlib.pyplot as plt
+
 
 fileDir = os.path.dirname(os.path.abspath(__file__)) # get path to this file
 os.chdir(fileDir) # Change working directory to current file
@@ -29,7 +31,9 @@ from modulesT import goTermsFromGenes
 
 #%% User settings
 save = False #Set if data should be saved to excel
-if save == True:
+savePlots = True #Set if plots should be saved
+
+if save|savePlots == True:
     dateToday = str(date.today())
 
 #%% getting locally saved data
@@ -94,11 +98,11 @@ if save == True:
 
 #%% load data saved above
 
-# data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM3.xlsx')
-# data_childrenGoTermsInt.columns = ['Gene','ChildGoTerms']
+data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM3.xlsx')
+data_childrenGoTermsInt.columns = ['Gene','ChildGoTerms']
 
-# data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM3.xlsx')
-# data_childrenGoTermsQuery.columns = ['Gene','ChildGoTerms']
+data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM3.xlsx')
+data_childrenGoTermsQuery.columns = ['Gene','ChildGoTerms']
 
 
 #%% Find the overlap of all 1st layer children of the GO Terms corresponding to the query gene(s) and its/their interactors
@@ -126,33 +130,64 @@ for goQuery in fLCQuery:
 #%% saving 1st layer child data to excel
 
 if save == True:
-    dfOut=pd.DataFrame([commonChildGoTerms]).T
-    dfOut.to_excel(r'../data/' + dateToday+ '_common1stLayerGO_BEM1_BEM3_testing.xlsx', index = True)
+    dfOut=pd.DataFrame([commonChildGoTerms]).T #Something is wrong with this. Found a set() entry in the excel. Maybe also making list of list?
+    dfOut.to_excel(r'../data/' + dateToday+ '_common1stLayerGO_BEM1_BEM3_testing.xlsx', index = True) 
 
 #%% reading data saved above
-# testing=pd.read_excel('../data/common1stLayerGO_BEM1_BEM3_testing.xlsx')
-# testing.columns = ['Genes','ChildGoTerms']
+commonChildGoTerms_loaded=pd.read_excel('../data/2021-05-27_common1stLayerGO_BEM1_BEM3_testing.xlsx')
+commonChildGoTerms_loaded.columns = ['Genes','ChildGoTerms']
 
 
 #%% consolidate data for plotting
 # interactionType = dict(zip(data['gene-query-name']+'-'+ data['gene-target-name'], data['interaction-type'])) #transform dataframe to dict with keys synthesised from two colums
 
+# commonInteractorData = commonInteractorData.dropna()
+
 dataCommonGo = commonInteractorData
 dataCommonGo['commonChildGoTermsFraction']= dataCommonGo.index.to_series().map(commonChildGoTermsFraction) #map by index to ensure correct order
-dataCommonGo['commonInteractorCount'] = list(map(len,list(commonInteractorData['commonInteractors'])))
 
-#%% select which data to plot
+for ii in list(commonInteractorData.index.values):
+    print(ii)
+    dataCommonGo.loc[ii,'commonInteractorCount'] = len(commonInteractorData.loc[ii,'commonInteractors'])
+    
+#%% Saving final data
+if save == True:
+    dataCommonGo.to_excel(r'../data/' + dateToday+ '_common1stLayerGO_BEM1_BEM3_dataCommonGo.xlsx', index = True) 
+
+
+#%% Plotting 
+
+def getPlotData(gene,dataCommonGo): #interaction data must have a 'gene query name' and a 'gene target name' column
+    '''
+   
+    '''
+    # d2 = defaultdict(dict)
+   
+    plotData = dataCommonGo[dataCommonGo['queryGene']==gene]
+    
+    plotData = plotData[np.array(plotData['interactionType'] == 'Negative Genetic') | \
+                               np.array(plotData['interactionType'] == 'Positive Genetic') | \
+                               np.array(plotData['interactionType'] == 'Synthetic Lethality')] #only select specific interaction types
+    return plotData
+
+
 gene = 'BEM1' #Plot data of this gene
 
-plotData = dataCommonGo[dataCommonGo['queryGene']==gene]
+plotData = getPlotData(gene,dataCommonGo)
 
-plotData = plotData[np.array(plotData['interactionType'] == 'Negative Genetic') | \
-                           np.array(plotData['interactionType'] == 'Positive Genetic') | \
-                           np.array(plotData['interactionType'] == 'Synthetic Lethality')] #only select specific interaction types
+# bins = int(np.ceil(np.sqrt(plotData.shape[0])))
+sns.set(style="ticks", color_codes=True)
+plot=sns.pairplot(plotData,vars=['commonChildGoTermsFraction','commonInteractorCount'],hue='interactionType', \
+                    hue_order=['Negative Genetic','Positive Genetic','Synthetic Lethality'], \
+                    diag_kind="hist",diag_kws = {'bins':int(np.ceil(np.sqrt(plotData.shape[0])))},corner=True)
+# plt.title(gene)
+plot.fig.suptitle(gene,y=1.08)
+if savePlots == True:
+    plot.savefig('../data/images/1stLayerCommonGO_byType_' + gene + '.png',dpi=300,format='png',transparent=True)
 
 
 
-#%% Plotting (1/2):
+#Alternative plotting
 # sns.set(style="ticks", color_codes=True)
 # plot=sns.pairplot(plotData,vars=['commonChildGoTermsFraction','commonInteractorCount'],hue='interactionType', \
 #                     hue_order=['Negative Genetic','Positive Genetic','Synthetic Lethality'], \
@@ -161,16 +196,20 @@ plotData = plotData[np.array(plotData['interactionType'] == 'Negative Genetic') 
 #                    corner=True, diag_kws = {'bw' : 10, 'kernel' : 'tri'})
 # plot.fig.suptitle(gene)
 
+#%% Comparing means of the three distributions (SL, NG, PG) Determine p value of equal mean...
+# must work for different sample counts
+# assuming normal distribution...
+# assuming independent samples
+# trim outliers?
+# pValue < 0.05 means the means of the two distributions are not equal.
+[t1,pValue_NG_SL] = sc.stats.ttest_ind(plotData['commonInteractorCount'][plotData['interactionType'] == 'Negative Genetic'], plotData['commonInteractorCount'][plotData['interactionType'] == 'Synthetic Lethality'] , equal_var=False)
+[t2,pValue_NG_PG] = sc.stats.ttest_ind(plotData['commonInteractorCount'][plotData['interactionType'] == 'Negative Genetic'], plotData['commonInteractorCount'][plotData['interactionType'] == 'Positive Genetic'] , equal_var=False)
 
-#%% Plotting (2/2): (Alternative)
+#%% Comparing same genetic interaction between different genes. 
+gene_2 = 'BEM3' #Plot data of this gene
 
-# bins = int(np.ceil(np.sqrt(plotData.shape[0])))
-sns.set(style="ticks", color_codes=True)
-plot=sns.pairplot(plotData,vars=['commonChildGoTermsFraction','commonInteractorCount'],hue='interactionType', \
-                    hue_order=['Negative Genetic','Positive Genetic','Synthetic Lethality'], \
-                    diag_kind="hist",diag_kws = {'bins':int(np.ceil(np.sqrt(plotData.shape[0])))},corner=True)
-# plot=sns.pairplot(plotData,vars=['commonChildGoTermsFraction','commonInteractorCount'],hue='interactionType', \
-#                     hue_order=['Negative Genetic','Positive Genetic','Synthetic Lethality'])
-# plt.title(query[0])
-plot.fig.suptitle(gene,y=1.08)
-# # plot.savefig('../output_images/Testing/common-go-terms-of-'+ gene +'-based-on-their-type.png',dpi=300,format='png',transparent=True)
+plotData_2 = getPlotData(gene_2,dataCommonGo)
+
+#CommonChildGoTermsFraction
+[t3,pValue_genes_NG] = sc.stats.ttest_ind(plotData['commonChildGoTermsFraction'][plotData['interactionType'] == 'Negative Genetic'], plotData_2['commonChildGoTermsFraction'][plotData_2['interactionType'] == 'Negative Genetic'] , equal_var=False)
+
