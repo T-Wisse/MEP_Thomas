@@ -80,3 +80,61 @@ plt.plot(tCSM, func(tCSM, *varsCSM), label = labelCSMfit)
 plt.legend()
 plt.yscale('log', basey = 2)
 plt.grid()
+
+#%% OD curve SATAY induction 14/06/21
+dataInduction = pd.read_excel('../../Data/LabData/OD_SATAY_induction.xlsx')
+
+
+tInduction = [0, 23, 48]
+
+for ii in range(len(dataInduction)):
+    strain = dataInduction['Strain'][ii]
+    plt.plot(tInduction, dataInduction.iloc[ii ,[1, 2, 3]], marker='o', linestyle='dashed', label = strain)
+
+
+plt.xlabel('Time incubated (h)')
+plt.ylabel('OD')
+plt.title('Growth curve during induction (SATAY)')
+plt.legend()
+#%% OD curve SATAY reseed 14/06/21
+dataReseed = pd.read_excel('../../Data/LabData/OD_SATAY_reseed.xlsx')
+tReseed = [0, 88, 90.5]
+
+for ii in range(len(dataReseed)):
+    strain = dataReseed['Strain'][ii]
+    plt.plot(tReseed, dataReseed.iloc[ii ,[1, 2, 3]], marker='o', linestyle='dashed', label = strain)
+
+plt.xlabel('Time incubated (h)')
+plt.ylabel('OD')
+plt.title('Growth curve during reseed (SATAY)')
+plt.legend()
+
+#%% plot colony count for data
+
+plateType = 'SC-URA' #CSM, SC-ADE or SC-URA
+
+# dataColonyInduction = pd.read_excel('../../Data/LabData/colonies_SATAY_combined.xlsx')
+dataColonyInduction = pd.read_excel('../../Data/LabData/SATAY_160621_colonies_combined.xlsx')
+
+dataColonyInduction = dataColonyInduction.iloc[:,:4]
+# tInduction = [0, 23, 46.5] #T for satay experiment 1
+tInduction = [0, 23, 51] #T for satay experiment 2
+if plateType == "SC-ADE":
+    dilutionFactor = [5, 50, 1000] #Dilution is [1, 10, 200]. 200uL plated so *5
+else:
+    dilutionFactor = [5000, 5000, 200000] #Dilution is [1000, 1000, 40000]. 200uL plated so *5
+
+pltData = dataColonyInduction[dataColonyInduction['plate&strain'].str.contains(plateType)==True]
+
+for ii in range(len(pltData)):
+    strain = pltData.iloc[ii,0]
+    tempData = dilutionFactor*pltData.iloc[ii ,[1, 2, 3]]
+    pltLabel = " ".join(strain.split( )[1:3])
+    plt.plot(tInduction, tempData, label = pltLabel , marker='o', linestyle='dashed',)
+
+plt.xlabel('Time incubated (h)')
+plt.ylabel('cells/ml on '+ plateType)
+# plt.ylabel('ADE+ cells/ml')
+plt.title('cells/ml during induction based on colonies in '+ plateType)
+# plt.title('ADE+ cells/ml during induction based on colonies in '+ plateType)
+plt.legend()
