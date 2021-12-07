@@ -49,10 +49,13 @@ data = data.drop(['paper-source'], axis = 1) #drop unused column. NOTE: Currentl
 #%% Set query gene(s)
 
 # query = ['BEM1', 'BEM3'] #testing query
+query = ['DPL1','PSD2']
 
-query = pd.read_excel('../data/genesCellPolarity_SGD_amigo.xlsx') #gene set to investigate. Example: cell polarity genes
-query.columns=['gene']
-query = list(set(query.gene)) #get unique entries (remove duplicates in query list)
+# query = pd.read_excel('../data/genesCellPolarity_SGD_amigo.xlsx') #gene set to investigate. Example: cell polarity genes
+# query.columns=['gene']
+# query = list(set(query.gene)) #get unique entries (remove duplicates in query list)
+
+
 
 #%% Calling the function common_interactors
 
@@ -93,16 +96,16 @@ if save == True:
     df=pd.DataFrame([fLCInteractors]).T
     df2 = pd.DataFrame([fLCQuery]).T
     
-    df.to_excel(r'../data/' + dateToday + '_1stLayerGO_INT_BEM1_BEM3_testing.xlsx', index = True)
-    df2.to_excel(r'../data/' + dateToday + '_1stLayerGO_BEM1_BEM3_testing.xlsx', index = True)
+    df.to_excel(r'../data/' + dateToday + '_1stLayerGO_INT_' + query[0] + '_testing.xlsx', index = True)
+    df2.to_excel(r'../data/' + dateToday + '_1stLayerGO_' + query[0] + '_testing.xlsx', index = True)
 
 #%% load data saved above
 
-data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM3.xlsx')
-data_childrenGoTermsInt.columns = ['Gene','ChildGoTerms']
+# data_childrenGoTermsInt=pd.read_excel('../data/1stLayerGO_INT_BEM1_BEM3.xlsx')
+# data_childrenGoTermsInt.columns = ['Gene','ChildGoTerms']
 
-data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM3.xlsx')
-data_childrenGoTermsQuery.columns = ['Gene','ChildGoTerms']
+# data_childrenGoTermsQuery=pd.read_excel('../data/1stLayerGO_BEM1_BEM3.xlsx')
+# data_childrenGoTermsQuery.columns = ['Gene','ChildGoTerms']
 
 
 #%% Find the overlap of all 1st layer children of the GO Terms corresponding to the query gene(s) and its/their interactors
@@ -131,11 +134,11 @@ for goQuery in fLCQuery:
 
 if save == True:
     dfOut=pd.DataFrame([commonChildGoTerms]).T #Something is wrong with this. Found a set() entry in the excel. Maybe also making list of list?
-    dfOut.to_excel(r'../data/' + dateToday+ '_common1stLayerGO_BEM1_BEM3_testing.xlsx', index = True) 
+    dfOut.to_excel(r'../data/' + dateToday+ '_common1stLayerGO_' + query[0] + '_testing.xlsx', index = True) 
 
 #%% reading data saved above
-commonChildGoTerms_loaded=pd.read_excel('../data/2021-05-27_common1stLayerGO_BEM1_BEM3_testing.xlsx')
-commonChildGoTerms_loaded.columns = ['Genes','ChildGoTerms']
+# commonChildGoTerms_loaded=pd.read_excel('../data/2021-05-27_common1stLayerGO_' + query[0] + '_testing.xlsx')
+# commonChildGoTerms_loaded.columns = ['Genes','ChildGoTerms']
 
 
 #%% consolidate data for plotting
@@ -171,7 +174,8 @@ def getPlotData(gene,dataCommonGo): #interaction data must have a 'gene query na
     return plotData
 
 
-gene = 'BEM1' #Plot data of this gene
+# gene = 'BEM1' #Plot data of this gene
+gene = query[0]
 
 plotData = getPlotData(gene,dataCommonGo)
 
@@ -206,7 +210,7 @@ if savePlots == True:
 [t2,pValue_NG_PG] = sc.stats.ttest_ind(plotData['commonInteractorCount'][plotData['interactionType'] == 'Negative Genetic'], plotData['commonInteractorCount'][plotData['interactionType'] == 'Positive Genetic'] , equal_var=False)
 
 #%% Comparing same genetic interaction between different genes. 
-gene_2 = 'BEM3' #Plot data of this gene
+gene_2 = query[1] #Plot data of this gene
 
 plotData_2 = getPlotData(gene_2,dataCommonGo)
 
