@@ -51,29 +51,18 @@ readData = loadWigfile(wigFile);
 
 geneCount = height(T);
 
+%% read annotation data from GFF file
+
+[coordinates, chromosome, stopChrCoordinates, geneID] = readFileGFF(); %Read in the gff annotation file
+
 
 %% transformation of used chromosome identifiers to 1:17. Works but it's an ugly fix
-
-% chromosomeIdentifiers = unique(data(:,1)); %Get the 17 unique chromosome identifiers used in the data
-% chromosomeIdentifiers = chromosomeIdentifiers - 1132;
-% data(:,1) = data(:,1)-1132;
-% data(data(:,1)==92,1) = data((data(:,1)==92),1)-75;
-% if unique(data(:,1)) ~= [1:17]
-%     disp('An issue occured with transformation of chromosome identifiers')
-% end
 
 data(:,1) = transformChromosomeIdentifiers(data(:,1));
 
 
-
-
-%% NOTE: RUNS. BUT I DON't USE THIS FILE SINCE THE RUN WAS DONE WITH A DIFFERENT FILE...?
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%prepare chromosomal features from gff file
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% prepare chromosomal features from gff file
+% NOTE: RUNS. BUT I DON't USE THIS FILE SINCE THE TRANSPOSONMAPPER RUN WAS DONE WITH A DIFFERENT FILE...?
 
 [genes,features,essential] = getFeaturesFromGff(gff); %
 
@@ -84,7 +73,7 @@ data(:,1) = transformChromosomeIdentifiers(data(:,1));
 temp = genes.coordinates(2:end,1)-genes.coordinates(1:end-1,1); %fun idea, doesnt work properly because of stupid reasons
 chromosomeEndPos = genes.coordinates((temp<0),2);
 chromosomeEndPos = [chromosomeEndPos; genes.coordinates(end,2)];
-chromosomeEndPos = chromosomeEndPos + 2000; %HCACK TO BYPASS ISSUE. REALLY SHOULD NOT DO THIS...
+chromosomeEndPos = chromosomeEndPos + 2000; %HACK TO BYPASS ISSUE. REALLY SHOULD NOT DO THIS...
 
 %% OBSOLETE?
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -110,38 +99,16 @@ chromosomeEndPos = chromosomeEndPos + 2000; %HCACK TO BYPASS ISSUE. REALLY SHOUL
 % end
 
  
-%% Probably works now. Why do we have non-unique entries to tn locations? probably they go in reverse directions?
+%% put all features and coordinates on one single huge concatenated chromosome
+% Why do we have non-unique entries to tn locations? probably they go in reverse directions?
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%put all features and coordinates on one single huge concatenated chromosome
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% lengthPreviousChr = [0; cumsum(chromosomeEndPos)]; %get the length in bp of each chromosome. The first chromosome starts at 0
-% lengthPreviousChr = lengthPreviousChr(1:end-1); % Remove the last entry as it does not act as a starting point to another chromosome
-% 
-% tnCoordinates = data;
-% tnCoordinatesConcat = [];
-% 
-% geneChromosomeLoc = zeros(geneCount,1);
-% 
-% for ii = 1:geneCount
-%     geneChromosomeLoc(ii) = roman2num(T.Chromosome{ii});
-% end
-% geneChromosomeLoc(isnan(geneChromosomeLoc)) = 17; %Mitochondrial DNA (denoted as 'mito') is returned as NaN by roman2num. All this DNA is counted as chromosome 17
-% geneStartCoordinatesConcat = T.StartLocation;
-% geneEndCoordinatesConcat = T.EndLocation;
-% 
-% for ii=1:17
-%     %NOTE: tnCoordinatesConcat includes double locations. Presumably where
-%     %transposons hit either direction
-%     tnCoordinatesConcat= [tnCoordinatesConcat; tnCoordinates(tnCoordinates(:,1)==ii,2)+lengthPreviousChr(ii)]; %Translate all transposon coordinates to a total bp. 
-%     geneStartCoordinatesConcat(geneChromosomeLoc==ii) = geneStartCoordinatesConcat(geneChromosomeLoc==ii)+lengthPreviousChr(ii); %Translate all gene start coordinates to a total bp. 
-%     geneEndCoordinatesConcat(geneChromosomeLoc==ii) = geneEndCoordinatesConcat(geneChromosomeLoc==ii)+lengthPreviousChr(ii); %Translate all gene end coordinates to a total bp. 
-% end
+lengthPreviousChr = [0; cumsum(chromosomeEndPos)]; %get the length in bp of each chromosome. The first chromosome starts at 0
+lengthPreviousChr = lengthPreviousChr(1:end-1); % Remove the last entry as it does not act as a starting point to another chromosome
 
-[tnCoordinatesConcat,geneStartCoordinatesConcat,geneEndCoordinatesConcat] = concatCoordinatesIntoSingleChr(T,tnCoordinates,geneCount)
+tnCoordinates = data;
+
+[tnCoordinatesConcat,geneStartCoordinatesConcat,geneEndCoordinatesConcat] = concatCoordinatesIntoSingleChr(T,tnCoordinates,geneCount,lengthPreviousChr);
 
 
 %% reading in wig file
@@ -152,7 +119,7 @@ chrEntries = [chrEntries; length(readData)];
 for ii = 1:17 %ARE THEY IN THE SAME ORDER? OTHERWISE THIS DOES NOT MAKE SENSE. Readdata counts up 1133 - 1148. Mito last
     readData(chrEntries(ii):chrEntries(ii+1),1) = readData(chrEntries(ii):chrEntries(ii+1),1) + lengthPreviousChr(ii); 
 end
-readData(isnan(readData(:,1)),:) = [];
+readData(isnan(readData(:,1)),:) = []; %Remove rows which contain a nan value
 
 %% OBSOLETE? Testing: Readpos, tnpos 
 % 
@@ -182,6 +149,7 @@ readData(isnan(readData(:,1)),:) = [];
 %         readCount.(myField) = [readCount.(myField) str2num(T.ReadsPerInsertionLocation{ii})];
 %     end
 % end
+
 %% Get number of reads & transposon per gene
 tnPerGene = Table2.NumberOfTransposonsPerGene;
 readPerGene = Table2.NumberOfReadsPerGene;
@@ -193,22 +161,6 @@ tnDensity = tnPerGene./geneLength; %define transposon density per gene
 
 %% Count number of transposon per gene minus end and beginning
 
-
-% tnPerGeneMinTen = zeros(geneCount,1);
-% readPerGeneMinTen = zeros(geneCount,1);
-% 
-% for ii=1:geneCount %Loop through each gene. May have an issue with genes on seperate chromosomes here mapping to the same location...
-%     insertionLocations = str2num(T.InsertionLocations{ii});
-%     readsPerInsertionLocations = str2num(T.ReadsPerInsertionLocation{ii});
-%     %Find all reads (tncoordinates_copy) that start at a basepair number between the start and end of a gene (start_coor = gene.coordinates(ii,1) and end_coor = gene.coordinates(ii,2))
-%     xx=insertionLocations>=T.StartLocation(ii)+geneLength(ii)*0.1 & insertionLocations<=T.EndLocation(ii)-geneLength(ii)*0.1;
-%     %determine how many reads there are per gene (index of each read is stored in xx). 
-%     tnPerGeneMinTen(ii) = sum(xx);
-%     readPerGeneMinTen(ii) = sum(readsPerInsertionLocations(xx));
-% end
-% 
-% tnDensityMinTen = tnPerGeneMinTen./geneLength;
-
 [tnPerGeneMinTen,readPerGeneMinTen,tnDensityMinTen] = getTransposonsPerGeneMinTen(T,geneLength,geneCount);
 
 %% intergenic regions of 20kb % TO DO
@@ -216,28 +168,31 @@ tnDensity = tnPerGene./geneLength; %define transposon density per gene
 wl = 20000; % define window length
 
 roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "mt"];
-t=0;
+tt=0;
 u=0;
 intergeniclength20kbpergene = zeros(length(geneLength),2);
 
 
-for k=1:length(chromosomeEndPos)
-    my_field = strcat('ch',num2str(k));     % create variable with all bp positions for every chromosome
-    genepos.(my_field) = zeros(chromosomeEndPos(k),1);
-    intergenictnpos.(my_field)= zeros(chromosomeEndPos(k),1);
-    
-    for i=t+1:t+sum(strcmp(roman(k),genes.chr)) % create binary with 1 for every bp that is part of a gene for every chromosome
-    genepos.(my_field)(genes.coordinates(i,1):genes.coordinates(i,2)) = 1; 
-    t = i;
+for kk=1:length(chromosomeEndPos) %For each chromosome
+    my_field = strcat('ch',num2str(kk)); % create variable with all bp positions for every chromosome
+    genepos.(my_field) = zeros(chromosomeEndPos(kk),1); % initialize field as number of bp in the chromosome
+    intergenictnpos.(my_field)= zeros(chromosomeEndPos(kk),1); % initialize field as number of bp in the chromosome
+    tnPos.(my_field) = zeros(chromosomeEndPos(kk),1);
+
+    for ii=tt+1:tt+sum(strcmp(roman(kk),genes.chr)) % For each gene in the corresponding chromosome
+        genepos.(my_field)(genes.coordinates(ii,1):genes.coordinates(ii,2)) = 1; %put 1 at the region (bp's) in the chromosome that corresponds to a gene
+        tt = ii;
     end
     
-    tnPos.(my_field)=tnCoordinates(tnCoordinates(:,1) == k,2);
-%     intergenictnpos.(my_field) = intergenictnpos; DOES NOT MAKE ANY
-%     SENSE?
+    temp = tnCoordinates(tnCoordinates(:,1) == kk,2); % Select the transposon coordinates for a gene. 
+    tnPos.(my_field)(temp) = 1; %gives a 1 for every bp position that has a transposon insertion
+        
+    intergenictnpos.(my_field)=tnPos.(my_field);
     genepos.(my_field)=logical(genepos.(my_field));
-    intergenictnpos.(my_field)(genepos.(my_field)) = 0;
+    intergenictnpos.(my_field)(genepos.(my_field)) = 0; %why?
     
-    for j=u+1:u+sum(strcmp(roman(k),genes.chr)) % every gene of each chromosome
+    
+    for j=u+1:u+sum(strcmp(roman(kk),genes.chr)) % every gene of each chromosome
         if genes.coordinates(j,1)-wl<1
             intergeniclength20kbpergene(j,1) = sum(1-(genepos.(my_field)(1:genes.coordinates(j,1)))); % calculate intergenic length before gen in 20kb window
             intergenictn20kbpergene(j,1) = sum(intergenictnpos.(my_field)(1:genes.coordinates(j,1))); % calculates number of tn in this region
@@ -246,9 +201,9 @@ for k=1:length(chromosomeEndPos)
             intergenictn20kbpergene(j,1) = sum(intergenictnpos.(my_field)(genes.coordinates(j,1)-wl:genes.coordinates(j,1)));
         end
         
-        if genes.coordinates(j,2)+wl>chromosomeEndPos(k)
-             intergeniclength20kbpergene(j,2) = sum(1-(genepos.(my_field)((genes.coordinates(j,2):chromosomeEndPos(k))))); % calculate intergenic length before gen in 20kb window
-             intergenictn20kbpergene(j,2) = sum(intergenictnpos.(my_field)(genes.coordinates(j,2):chromosomeEndPos(k)));
+        if genes.coordinates(j,2)+wl>chromosomeEndPos(kk)
+             intergeniclength20kbpergene(j,2) = sum(1-(genepos.(my_field)((genes.coordinates(j,2):chromosomeEndPos(kk))))); % calculate intergenic length before gen in 20kb window
+             intergenictn20kbpergene(j,2) = sum(intergenictnpos.(my_field)(genes.coordinates(j,2):chromosomeEndPos(kk)));
         else
             intergeniclength20kbpergene(j,2) = sum(1-(genepos.(my_field)(genes.coordinates(j,2):genes.coordinates(j,2)+wl))); % calculate intergenic length before gen in 20kb window
             intergenictn20kbpergene(j,2) = sum(intergenictnpos.(my_field)(genes.coordinates(j,2):genes.coordinates(j,2)+wl));
@@ -260,20 +215,11 @@ end
 
 intergenic_tndensity20kb = intergenictn20kbpergene./intergeniclength20kbpergene;
 
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Longest transposon free interval within a gene
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Find the longest transposon free interval within each gene
 
-for ii=1:geneCount %Loop trough each gene. For each, find the longest interval between transposons in bp
-    ww = tnCoordinatesConcat>=geneStartCoordinatesConcat(ii)&tnCoordinatesConcat<=geneEndCoordinatesConcat(ii);
-    ww = tnCoordinatesConcat(ww);
-    ww = [geneStartCoordinatesConcat(ii) ; ww ; geneEndCoordinatesConcat(ii)]; %Concat the transposon locations of gene ii with the start and end of the gene
-    tnFreeInterval(ii,1) = max(diff(ww)); %determine the largest difference bertween previously concatenated locations to find longest region without a transposon in the gene 
-end
+tnFreeInterval = getTnFreeIntervalPerGene(tnCoordinatesConcat,geneStartCoordinatesConcat,geneEndCoordinatesConcat,geneCount);
 
-
-% %% creating a list with the number of transposons and reads in the 100bp 5' of each gene (promotor region)
+%% creating a list with the number of transposons and reads in the 100bp 5' of each gene (promotor region)
 % TO DO ... This I need to use the genes file for...
 
 genesense = cell2mat(gff(features.genes,7));
@@ -289,12 +235,12 @@ genes.coordinates_concat(:,2) = geneEndCoordinatesConcat;
 tnPos_concat = tnCoordinatesConcat; %maybe?
 
 
-for k=1:length(genes.coordinates_concat)
-    if genesensebinary(k)==1    
-        promotortn(k)=sum(tnPos_concat(genes.coordinates_concat(k,1)-100:genes.coordinates_concat(k,1)));
+for kk=1:length(genes.coordinates_concat)
+    if genesensebinary(kk)==1    
+        promotortn(kk)=sum(tnPos_concat(genes.coordinates_concat(kk,1)-100:genes.coordinates_concat(kk,1)));
     %     promotorread(k)=sum(readPos_concat(genes.coordinates_concat(k,1)-100:genes.coordinates_concat(k,1)));
     else
-        promotortn(k)=sum(tnPos_concat(genes.coordinates_concat(k,2):genes.coordinates_concat(k,2)+100));
+        promotortn(kk)=sum(tnPos_concat(genes.coordinates_concat(kk,2):genes.coordinates_concat(kk,2)+100));
     %     promotorread(k)=sum(readPos_concat(genes.coordinates_concat(k,2):genes.coordinates_concat(k,2)+100));
     end
 end
@@ -303,30 +249,21 @@ end
 
 
 
-%% Determine which genes are essential
+%% Determine which genes are annotated as essential
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Statistical Learning Matlab
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 essentiality = zeros(geneCount,1);
 
 for ii = 1:geneCount
-    
-    if sum(strcmp(essentialGeneList, T.GeneName{ii})) == 1
+     if sum(strcmp(essentialGeneList, T.GeneName{ii})) == 1
         essentiality(ii) = 1;
     end
 end
 
-%% form table
+%% Combine training/testing data into a single table
 
-tnpergeneT = tnPerGene';
-readpergeneT = readPerGene';
 tndensityT = tnDensity;
 
-% essentiality = char(essentiality);
-essentialyesno=essentiality;
-
-readnumb = 1 %TEMPORARY SO I CAN CONTINUE. VERY VERY WRONG! %READNUMB IS PROBABLY THE READ COUNT PER BP
+readnumb = 1 %TEMPORARY SO I CAN CONTINUE. VERY VERY WRONG! %READNUMB IS PROBABLY THE READ COUNT PER BP?
 
 readpergenepertn = readPerGene./(tnPerGene.*sum(readnumb));
 readpergenepertnminten = readPerGeneMinTen./(tnPerGeneMinTen.*sum(readnumb));
@@ -335,17 +272,16 @@ intergenictn20kbup = intergenictn20kbpergene(1:6600,1); %FIX THIS
 intergenictn20kbdown = intergenictn20kbpergene(1:6600,2); %FIX THIS
 NI20kb = tndensityT./((intergenic_tndensity20kb(1:6600,1)+intergenic_tndensity20kb(1:6600,2))/2); %FIX THIS
 
+dataTableOfFeatures = table(tnPerGeneMinTen, readPerGeneMinTen, geneLength, tndensityT, tnFreeIntervalPerGeneLength, intergenictn20kbup, intergenictn20kbdown, NI20kb, essentiality);% 
+dataTableOfFeatures_yTW = dataTableOfFeatures;
+
 % Select which data set you are working with
 
 %EssentialityTable_WTI = table(tnpergeneminten', readpergeneminten', genelength, tndensityminten', tnfreeintervalpergenelength', promotortn', intergenictn20kbup, intergenictn20kbdown, NI20kb, essentialyesno);
 %EssentialityTable_WTII = table(tnpergeneminten', readpergeneminten', genelength, tndensityminten', tnfreeintervalpergenelength', promotortn', intergenictn20kbup, intergenictn20kbdown, NI20kb, essentialyesno);
-
-% TestTable_DplI = table(tnPerGeneMinTen', readPerGeneMinTen', geneLength, tndensityT, tnfreeintervalpergenelength', promotortn', intergenictn20kbup, intergenictn20kbdown, NI20kb);% 
-
+%TestTable_DplI = table(tnPerGeneMinTen', readPerGeneMinTen', geneLength, tndensityT, tnfreeintervalpergenelength', promotortn', intergenictn20kbup, intergenictn20kbdown, NI20kb);% 
 %TestTable_DplIPsdII = table(tnpergeneminten', readpergeneminten', genelength, tndensityT, tnfreeintervalpergenelength', promotortn', intergenictn20kbup, intergenictn20kbdown, NI20kb);% 
 
-dataTableOfFeatures = table(tnPerGeneMinTen, readPerGeneMinTen, geneLength, tndensityT, tnFreeIntervalPerGeneLength, intergenictn20kbup, intergenictn20kbdown, NI20kb, essentialyesno);% 
-dataTableOfFeatures_yTW = dataTableOfFeatures;
 
 %% Train classifier 
 % [A, B, C] = trainClassifier(dataTableOfFeatures) USE BAGGED TREES !!!!
