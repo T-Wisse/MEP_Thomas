@@ -219,11 +219,9 @@ essdifference_yLIC_yTW = ~(predicted_yTW == predicted_yLIC);
 % temp = trainedModelWTStripped.ClassificationKNN;
 
 kNNMdl = classifier.ClassificationEnsemble;
-[labels,score] = predict(kNNMdl,dataTableOfFeatures_yLIC);
-Class_score_yLIC137_7 = score;
+[labels,Class_score_yLIC137_7] = predict(kNNMdl,dataTableOfFeatures_yLIC);
+[labels,Class_score_yTW001_4] = predict(kNNMdl,dataTableOfFeatures_yTW);
 
-[labels,score] = predict(kNNMdl,dataTableOfFeatures_yTW);
-Class_score_yTW001_4 = score;
 
 %% check different essential genes in DplI and DplIPsdII with >95% accuracy
 
@@ -251,4 +249,35 @@ xlabel('Classification score')
 ylabel('#genes')
 title('Distribution of Classification scores in yTW001\_4')
 set (gca, 'Fontsize', 20)
+
+
+%% Create a table (matrix) containing all the essential genes in different genetic backgrounds
+essentialGenesInDifferentBackgrounds = [dataTableOfFeatures_WT.essentiality, predicted_WT, predicted_yLIC, predicted_yTW];
+essentialAtLeastOnce = (sum(essentialGenesInDifferentBackgrounds,2)>0);
+onlyEssentialGenesInDifferentBackgrounds = [geneList(essentialAtLeastOnce), num2cell([dataTableOfFeatures_WT.essentiality(essentialAtLeastOnce), predicted_WT(essentialAtLeastOnce), predicted_yLIC(essentialAtLeastOnce), predicted_yTW(essentialAtLeastOnce)])];
+
+%%
+
+tableVars = {'annotatedEssentialWT', 'predictedEssential_WT', 'predictedEssential_yLIC', 'predictedEssential_yTW'};
+
+A = geneList(essentialAtLeastOnce);
+tempTable = array2table(essentialGenesInDifferentBackgrounds(essentialAtLeastOnce,:));
+tempTable.('GeneID') = A;
+essentialGenesInDifferentBackgrounds_Table = [tempTable(:,5),tempTable(:,1:4)];
+
+for ii = 1:4
+    essentialGenesInDifferentBackgrounds_Table.Properties.VariableNames{append('Var',num2str(ii))} = tableVars{ii};
+end
+
+% essentialGenesInDifferentBackgrounds_Table = join(cell2table(geneList(essentialAtLeastOnce)) , array2table(essentialGenesInDifferentBackgrounds(essentialAtLeastOnce,:)));
+
+% Write table to excel file
+% cd('D:\Users\Thomas\Studie\MEP\MEP_Thomas\src\MATLAB\classifierWorkspaces')
+% writetable(essentialGenesInDifferentBackgrounds_Table,'essentialGenesInDifferentBackgrounds_Table.xlsx','Sheet',1);
+
+%%
+tempTableA = array2table(classScores);
+tempTableA.('GeneID') = geneList;
+classScoreTable = [tempTableA(:,3),tempTableA(:,1),tempTableA(:,2)];
+% writetable(classScoreTable,'classScoreTable.xlsx','Sheet',1);
 
